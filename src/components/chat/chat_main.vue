@@ -5,12 +5,20 @@
       </el-header>
       <el-container>
         <el-aside >
-          <chat_friend_list>
-          </chat_friend_list>
+          <div>
+            <div v-if="state.isGroup">
+              <chat_group_list/>
+            </div>
+            <div v-if="!state.isGroup">
+              <chat_friend_list/>
+            </div>
+          </div>
+
         </el-aside>
         <el-container>
           <el-main>
-            <im_home></im_home>
+<!--            <im_home/>-->
+            <chat_content/>
           </el-main>
           <el-footer style="display: flex">
               <el-input v-model="state.inputMsg" placeholder="请输入消息"></el-input>
@@ -30,17 +38,15 @@ import state from "../../store/state.js";
 import {useRoute} from "vue-router";
 import {nextTick, ref, watchEffect} from "vue";
 import axios from "axios";
+import Chat_group_list from "./chat_group_list.vue";
+import {ElMessage} from "element-plus";
+import Chat_content from "./chat_content.vue";
 export default {
   name: "chat_main",
-  components: {Im_home, Chat_friend_list},
+  components: {Chat_content, Chat_group_list, Im_home, Chat_friend_list},
   data(){
     return{
-      state
-    }
-  },
-  methods:{
-    sendMessage(){
-      state.inputMsg="la"
+      state,
     }
   },
   setup() {
@@ -65,8 +71,12 @@ export default {
           msg.seq = seq++;
           if(msg.code!=-1){
             state.MsgList.push(msg);
+            if(!state.Record.has(msg.sendID)){
+              state.Record.set(msg.sendID,[])
+            }
+            state.Record.get(msg.sendID).push(msg)
           }else {
-            alert("消息发送失败")
+            ElMessage.error("消息发送失败")
           }
         };
       }).catch(err=>{
@@ -75,29 +85,28 @@ export default {
     });
 
     const sendMessage = () => {
-
-      let msg = {
+      const msg = {
         sendID: state.user.uid,
-        recvID: "",
-        groupID: "",
+        recvID: state.isGroup?"":state.ShowFriendId,
+        groupID: state.isGroup?state.ShowGroupId:"",
         senderPlatformID: 1,
         senderNickname: state.user.nike_name,
         senderFaceURL: state.user.face_url,
-        sessionType: 1,
+        sessionType: state.isGroup?1:0,
         msgFrom: 1,
         contentType: 1,
         content: state.inputMsg,
-        seq: 0,
+        seq: seq++,
         sendTime: Date.now(),
-        status: 0,
+        status: 1,
       };
-      if(state.isGroup){
-        msg.groupID=state.ShowGroupId
-      }else {
-        msg.sendID=state.ShowFriendId
-      }
       websocket.value.send(JSON.stringify(msg));
       state.inputMsg = "";
+      // 滚动到底部
+      nextTick(() => {
+        const scrollbar = document.getElementsByClassName('el-scrollbar__wrap')[0];
+        scrollbar.scrollTop = scrollbar.scrollHeight;
+      });
     };
 
     return {

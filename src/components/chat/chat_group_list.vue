@@ -1,7 +1,7 @@
 <!-- groupList.vue -->
 <template>
   <div class="group-list">
-    <el-tag v-for="id in groupList" :key="id" @click="toChat(id)">{{ id }}</el-tag>
+    <el-tag v-for="id in groupList" :key="id" @click="toChat(id)">{{ groupMap.get(id).group_name }}</el-tag>
   </div>
 </template>
 
@@ -30,6 +30,7 @@ export default {
   },
   setup() {
     const groupList = ref([]) // 定义 groupList 为响应式数据
+    const groupMap = ref(new Map)
     const getgroupList = async ()=>{
       try {
         const res = await axios.get(`http://${rootAddr}/group/list`)// 获取群组列表
@@ -44,12 +45,26 @@ export default {
       } catch (err) {
         ElMessage(`获取群组列表错误${err}`)
       }
+
+      try {
+        for(let i=0;i<groupList.value.length;i++){
+          const res = await axios.get(`http://${rootAddr}/group/info?group_id=${groupList.value[i]}`)// 获取好友列表
+          if(res.data.code!=0){
+            ElMessage.error(`获取群组详情失败${res.data.msg}`)
+            return
+          }
+          groupMap.value.set(groupList.value[i],res.data.data)
+        }
+      }catch (err){
+        ElMessage(`获取群组详情错误${err}`)
+      }
     }
     watchEffect(() => {
      getgroupList()
     });
     return{
-      groupList
+      groupList,
+      groupMap
     }
   },
   methods: {
