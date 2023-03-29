@@ -2,7 +2,7 @@
   <div class="chat-page">
     <el-scrollbar wrap-class="chat-window" ref="scrollbar">
       <ul>
-        <li v-for="msg in msgList" :key="msg.seq">
+        <li v-for="msg in msgList" :key="msg.sendTime">
           <el-card class="card" :class="{ 'from-me': msg.sendID }">
             <div class="info">{{ msg.senderNickname }}</div>
             <div class="content">{{ msg.content }}</div>
@@ -23,27 +23,6 @@ export default {
   name: "chat_content",
   setup(){
     const msgList=ref([])
-    // // 获取会话列表
-    // const getMsgList = computed(() => {
-    //   console.log("开始筛选记录")
-    //   if (state.isGroup){
-    //     console.log("开始筛选群消息记录")
-    //     return state.MsgList.filter(function (msg) {
-    //       if(msg.group_id==state.ShowGroupId){
-    //         return true
-    //       }
-    //       return false
-    //     })
-    //   }else{
-    //     console.log("开始筛选个人消息记录")
-    //     return state.MsgList.filter(function (msg) {
-    //       if (msg.group_id==""&&msg.send_id==state.ShowFriendId){
-    //         return true
-    //       }
-    //       return false
-    //     })
-    //   }
-    // })
     watch(()=>{
       if(state.Record.get(state.ShowFriendId)==null){
         return null
@@ -51,10 +30,9 @@ export default {
       return state.Record.get(state.ShowFriendId).length
     },()=>{
       msgList.value=state.Record.get(state.ShowFriendId)
-      console.log("消息：",state.Record.get(state.ShowFriendId))
+      // console.log("消息：",state.Record.get(state.ShowFriendId))
     })
     return{
-      // getMsgList,
       msgList
     }
   }

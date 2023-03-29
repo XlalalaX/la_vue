@@ -8,8 +8,7 @@ const state = reactive({
     ShowGroupId:"",
     ShowFriendId:"",
     inputMsg:"",
-    isGroup:false,
-    MsgList:[],
+    isGroup:false
 })
 
 export default state

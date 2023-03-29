@@ -68,16 +68,19 @@ export default {
         websocket.value = new WebSocket(url);
         websocket.value.onmessage = (event) => {
           const msg = JSON.parse(event.data);
-          msg.seq = seq++;
-          if(msg.code!=-1){
-            state.MsgList.push(msg);
+            //单聊
+            if(msg.sessionType==0){
             if(!state.Record.has(msg.sendID)){
               state.Record.set(msg.sendID,[])
             }
             state.Record.get(msg.sendID).push(msg)
           }else {
-            ElMessage.error("消息发送失败")
-          }
+              //群聊
+              if(!state.Record.has(msg.groupID)){
+                state.Record.set(msg.groupID,[])
+              }
+              state.Record.get(msg.groupID).push(msg)
+            }
         };
       }).catch(err=>{
         alert(`链接出错：${err}`)
@@ -98,7 +101,7 @@ export default {
         content: state.inputMsg,
         seq: seq++,
         sendTime: Date.now(),
-        status: 1,
+        status: 0,
       };
       websocket.value.send(JSON.stringify(msg));
       state.inputMsg = "";
