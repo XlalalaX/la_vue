@@ -62,7 +62,7 @@
 import axios from 'axios';
 import {ElMessage} from 'element-plus'
 import {router} from "../router/index.js";
-import state from "../store/state.js";
+import {state} from "../store/state.js";
 
 export default {
   name: 'login',

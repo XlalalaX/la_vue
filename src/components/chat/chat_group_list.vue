@@ -1,7 +1,11 @@
 <!-- groupList.vue -->
 <template>
   <div class="group-list">
-    <el-tag v-for="id in groupList" :key="id" @click="toChat(id)">{{ groupMap.get(id).group_name }}</el-tag>
+    <el-menu :default-active="state.ShowgroupId">
+      <el-menu-item v-for="id in groupList" :key="id" :index="id" @click="toChat(id)" >
+        {{ groupMap.get(id) == null ? null : groupMap.get(id).group_name }}
+      </el-menu-item>
+    </el-menu>
   </div>
 </template>
 
@@ -10,7 +14,8 @@ import axios from 'axios'
 import {getCurrentInstance, ref, watchEffect} from "vue";
 import {ElMessage} from 'element-plus'
 import {rootAddr, router} from "../../router/index.js";
-import state from "../../store/state.js";
+import {getChatId, state} from "../../store/state.js";
+import {pb_msg} from "../../proto/pb_msg/pb_msg.pb.js";
 
 // 全局添加请求拦截器
 axios.interceptors.request.use(function (config) {
@@ -26,50 +31,116 @@ export default {
   name: "chat_group_list",
   data() {
     return {
+      selectedGroupId: null,
+      state
+    }
+  },
+  computed: {
+    // 判断菜单项是否处于选中状态
+    isActive() {
+      return (id) => this.selectedGroupId === id;
     }
   },
   setup() {
     const groupList = ref([]) // 定义 groupList 为响应式数据
     const groupMap = ref(new Map)
-    const getgroupList = async ()=>{
+    const getgroupList = async () => {
       try {
-        const res = await axios.get(`http://${rootAddr}/group/list`)// 获取群组列表
-        console.log(`rsp:`,res)
-        if(res.data.code!=0){
+        const res = await axios.get(`http://${rootAddr}/group/self/list`)// 获取群组列表
+        console.log(`rsp:`, res)
+        if (res.data.code != 0) {
           ElMessage.error(`获取群组列表失败${res.data.msg}`)
           return
         }
         groupList.value = res.data.data.group_list
-        console.log(`this.groupList`,this.groupList)
+        if(groupList.value.length>0){
+         for(let i=0;i<groupList.value.length;i++){
+           if(groupList.value[i]!=""){
+             state.ShowGroupId=groupList.value[i]
+             state.groupList=groupList.value
+             break
+           }
+         }
+        }
+        console.log(`this.groupList:`, groupList)
         ElMessage.success(`获取群组列表成功`)
       } catch (err) {
         ElMessage(`获取群组列表错误${err}`)
       }
 
       try {
-        for(let i=0;i<groupList.value.length;i++){
+        for (let i = 0; i < groupList.value.length; i++) {
           const res = await axios.get(`http://${rootAddr}/group/info?group_id=${groupList.value[i]}`)// 获取好友列表
-          if(res.data.code!=0){
+          if (res.data.code != 0) {
             ElMessage.error(`获取群组详情失败${res.data.msg}`)
             return
           }
-          groupMap.value.set(groupList.value[i],res.data.data)
+          groupMap.value.set(groupList.value[i], res.data.data)
         }
-      }catch (err){
+      } catch (err) {
         ElMessage(`获取群组详情错误${err}`)
       }
     }
-    watchEffect(() => {
-     getgroupList()
+    //获取历史消息记录
+    const getChatLog=()=>{
+      console.log("获取群历史消息1",state.groupList)
+      for(let i=0;i<state.groupList.length;i++){
+        console.log("获取群历史消息2",state.groupList)
+        //只更新已保存的消息小于10条的
+        if(state.Record.get(state.groupList[i])?.length??0>10){
+          continue
+        }
+        console.log("获取群历史消息3",state.groupList)
+        axios.get(`http://${rootAddr}/chat_log/temp?chat_id=${state.groupList[i]}&chat_type=1`)
+        console.log("获取群历史消息4",state.groupList)
+        //     .then(res=>{
+        //   const msgList=[]
+        //   if(res.data.data.chat_msg?.length??0>0){
+        //     for(let i=0;i<res.data.data.chat_msg.length;i++){
+        //       //解析历史聊天记录
+        //       const newMsg=pb_msg.Msg.decode(new Uint8Array(res.data.data.chat_msg[i].msg))
+        //       newMsg.seq=msgList.length
+        //       msgList.push(newMsg)
+        //     }
+        //     for(let j=0;j<state.Record.get(res.data.data.chat_id).length;j++){
+        //       //排除所有发送时间小于现在时间的消息，合并消息列表
+        //       if(msgList[msgList.length-1].sendTime<=state.Record.get(res.data.data.chat_id)[j].sendTime){
+        //         if(msgList[msgList.length-1].sendTime<state.Record.get(res.data.data.chat_id)[j].sendTime){
+        //           state.Record.get(res.data.data.chat_id)[j].seq=msgList.length
+        //           msgList.push(state.Record.get(res.data.data.chat_id)[j])
+        //         }else {
+        //           //发送时间相同情况时全面比较
+        //           if(msgList[msgList.length-1].content==state.Record.get(res.data.data.chat_id)[j].content
+        //               &&msgList[msgList.length-1].file==state.Record.get(res.data.data.chat_id)[j].file){
+        //             continue
+        //           }else {
+        //             state.Record.get(res.data.data.chat_id)[j].seq=msgList.length
+        //             msgList.push(state.Record.get(res.data.data.chat_id)[j])
+        //           }
+        //         }
+        //       }
+        //     }
+        //     //替换原本的
+        //     state.Record.set(res.data.data.chat_id,msgList)
+        //   }
+        // }).catch(err=>{
+        //   ElMessage(`获取好友历史聊天记录失败：${err}`)
+        // })
+      }
+    }
+    watchEffect(async () => {
+      await getgroupList()
+      await getChatLog()
     });
-    return{
+
+    return {
       groupList,
       groupMap
     }
   },
   methods: {
     toChat(id) {
-      state.ShowgroupId=id
+      state.ShowGroupId = id
     }
   },
 }
