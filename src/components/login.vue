@@ -61,7 +61,7 @@
 <script>
 import axios from 'axios';
 import {ElMessage} from 'element-plus'
-import {router} from "../router/index.js";
+import {rootAddr, router} from "../router/index.js";
 import {state} from "../store/state.js";
 
 export default {
@@ -138,9 +138,15 @@ export default {
               localStorage.setItem("la_user", JSON.stringify(response.data.data.user))
               //赋值给本地存储
               state.user=response.data.data.user
+
+              state.user.face_url=
               state.token=response.data.data.token
-              ElMessage.success(`Welcome, ${response.data.data.user.nike_name}!`);
-              router.push("/chat_main")
+              await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${state.user.uid}`)
+                .then((response) => {
+                  state.user.face_url = response.data.data
+                })
+              ElMessage.success(`Welcome, ${response.data.data.user.nick_name}!`);
+              await router.push("/chat_main")
             }
           } catch (error) {
             // Handle error message

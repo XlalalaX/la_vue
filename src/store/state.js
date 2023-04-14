@@ -13,6 +13,7 @@ export const state = reactive({
     friendMap:new Map(),
     groupList:[],
     groupMap:new Map(),
+    addReqList:new Map(),
 })
 
 export function getChatId(s1, s2) {

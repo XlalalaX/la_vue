@@ -2,14 +2,22 @@
 <template>
   <div class="friend-list">
       <el-menu :default-active="state.ShowFriendId">
-      <el-menu-item v-for="friendId in friendList" :key="friendId" :index="friendId" @click="toChat(friendId)">{{ friendMap.get(friendId)==null?null:friendMap.get(friendId).nike_name }}</el-menu-item>
+      <el-menu-item v-for="friendId in state.friendList" :key="friendId" :index="friendId" @click="toChat(friendId)">
+        <div class="avatar-with-text">
+          <el-avatar
+              :size="40"
+              :src="state.friendMap.get(friendId)==null?null:state.friendMap.get(friendId).face_url"
+              :fit="cover">{{ state.friendMap.get(friendId)==null?null:state.friendMap.get(friendId).nick_name}}</el-avatar>
+          <span class="xian_select_name" style="margin-inline-start:10px;max-width:30%">{{state.friendMap.get(friendId)==null?null:state.friendMap.get(friendId).nick_name}}</span>
+        </div>
+      </el-menu-item>
       </el-menu>
   </div>
 </template>
 
 <script>
 import axios from 'axios'
-import {getCurrentInstance, ref, watch, watchEffect} from "vue";
+import {getCurrentInstance, onMounted, ref, watch, watchEffect} from "vue";
 import {ElMessage} from 'element-plus'
 import {rootAddr, router} from "../../router/index.js";
 import {getChatId, state} from "../../store/state.js";
@@ -34,8 +42,8 @@ export default {
     }
   },
   setup() {
-    const friendList = ref([]) // 定义 friendList 为响应式数据
-    const friendMap=ref(new Map)
+    // const friendList = ref([]) // 定义 friendList 为响应式数据
+    // const friendMap=ref(new Map)
     const getFriendList = async ()=>{
       //获取好友列表
       try {
@@ -45,13 +53,12 @@ export default {
           ElMessage.error(`获取好友列表失败${res.data.msg}`)
           return
         }
-       friendList.value = res.data.data.friend_list
-        console.log(`this.friendList:`,friendList)
-        if(friendList.value.length>0){
-          for(let i=0;i<friendList.value.length;i++){
-            if(friendList.value[i]!=""){
-              state.ShowFriendId=friendList.value[i]
-              state.friendList=friendList.value
+        state.friendList = res.data.data.friend_list
+        console.log(`this.friendList:`,state.friendList)
+        if(state.friendList.length>0){
+          for(let i=0;i<state.friendList.length;i++){
+            if(state.friendList[i]!=""){
+              state.ShowFriendId=state.friendList[i]
               break
             }
           }
@@ -62,13 +69,15 @@ export default {
       }
       //获取好友信息
       try {
-       for(let i=0; i<friendList.value.length; i++){
-         const res = await axios.get(`http://${rootAddr}/user/user_show_info?uid=${friendList.value[i]}`)// 获取好友信息
+       for(let i=0; i<state.friendList.length; i++){
+         const res = await axios.get(`http://${rootAddr}/user/user_show_info?uid=${state.friendList[i]}`)// 获取好友信息
          if(res.data.code!=0){
            ElMessage.error(`获取好友详情失败${res.data.msg}`)
            return
          }
-         friendMap.value.set(friendList.value[i],res.data.data)
+         let respond=await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${res.data.data.uid}`)
+         res.data.data.face_url=respond.data.data
+         state.friendMap.set(state.friendList[i],res.data.data)
        }
       }catch (err){
         ElMessage(`获取好友详情错误${err}`)
@@ -122,13 +131,11 @@ export default {
       }
       console.log("state",state)
     }
-    watchEffect(async () => {
+    onMounted(async () => {
      await getFriendList()
      await getChatLog()
     });
     return{
-      friendList,
-      friendMap
     }
   },
   methods: {
@@ -140,5 +147,7 @@ export default {
 </script>
 
 <style scoped>
-
+.xian_select_name:hover {
+  color: aqua;
+}
 </style>

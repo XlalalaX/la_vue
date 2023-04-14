@@ -1,9 +1,9 @@
 <!-- groupList.vue -->
 <template>
   <div class="group-list">
-    <el-menu :default-active="state.ShowgroupId">
-      <el-menu-item v-for="id in groupList" :key="id" :index="id" @click="toChat(id)" >
-        {{ groupMap.get(id) == null ? null : groupMap.get(id).group_name }}
+    <el-menu :default-active="state.ShowGroupId">
+      <el-menu-item v-for="id in state.groupList" :key="id" :index="id" @click="toChat(id)" >
+        <span class="xian_select_name">{{ state.groupMap.get(id) == null ? null : state.groupMap.get(id).group_name }}</span>
       </el-menu-item>
     </el-menu>
   </div>
@@ -11,7 +11,7 @@
 
 <script>
 import axios from 'axios'
-import {getCurrentInstance, ref, watchEffect} from "vue";
+import {getCurrentInstance, onMounted, ref, watchEffect} from "vue";
 import {ElMessage} from 'element-plus'
 import {rootAddr, router} from "../../router/index.js";
 import {getChatId, state} from "../../store/state.js";
@@ -31,19 +31,14 @@ export default {
   name: "chat_group_list",
   data() {
     return {
-      selectedGroupId: null,
       state
     }
   },
   computed: {
-    // 判断菜单项是否处于选中状态
-    isActive() {
-      return (id) => this.selectedGroupId === id;
-    }
   },
   setup() {
-    const groupList = ref([]) // 定义 groupList 为响应式数据
-    const groupMap = ref(new Map)
+    // const groupList = ref([]) // 定义 groupList 为响应式数据
+    // const groupMap = ref(new Map)
     const getgroupList = async () => {
       try {
         const res = await axios.get(`http://${rootAddr}/group/self/list`)// 获取群组列表
@@ -52,33 +47,60 @@ export default {
           ElMessage.error(`获取群组列表失败${res.data.msg}`)
           return
         }
-        groupList.value = res.data.data.group_list
-        if(groupList.value.length>0){
-         for(let i=0;i<groupList.value.length;i++){
-           if(groupList.value[i]!=""){
-             state.ShowGroupId=groupList.value[i]
-             state.groupList=groupList.value
+        state.groupList = res.data.data.group_list
+        if(state.groupList.length>0){
+         for(let i=0;i<state.groupList.length;i++){
+           if(state.groupList[i]!=""){
+             state.ShowGroupId=state.groupList[i]
+             state.groupList=state.groupList
              break
            }
          }
         }
-        console.log(`this.groupList:`, groupList)
+        console.log(`this.groupList:`, state.groupList)
         ElMessage.success(`获取群组列表成功`)
       } catch (err) {
         ElMessage(`获取群组列表错误${err}`)
       }
 
       try {
-        for (let i = 0; i < groupList.value.length; i++) {
-          const res = await axios.get(`http://${rootAddr}/group/info?group_id=${groupList.value[i]}`)// 获取好友列表
+        for (let i = 0; i < state.groupList.length; i++) {
+          const res = await axios.get(`http://${rootAddr}/group/info?group_id=${state.groupList[i]}`)// 获取好友列表
           if (res.data.code != 0) {
             ElMessage.error(`获取群组详情失败${res.data.msg}`)
             return
           }
-          groupMap.value.set(groupList.value[i], res.data.data)
+          if (res.data.data.admin != null) {
+            for (let j = 0; j < res.data.data.admin.length; j++) {
+              if (res.data.data.admin[j] == state.user_id) {
+                res.data.data.is_admin = true
+                break
+              }
+            }
+          }
+          state.groupMap.set(state.groupList[i], res.data.data)
         }
       } catch (err) {
-        ElMessage(`获取群组详情错误${err}`)
+        ElMessage(`获取群组详情错误`,err)
+      }
+
+      //获取所有自己有管理权限的群的申请消息
+      try {
+       state.groupMap.forEach( (value, key) => {
+          axios.get(`http://${rootAddr}/add_req/group?group_id=${key}`).then(
+            res => {
+              if (res.data.code != 0) {
+                ElMessage.error(`获取群组申请列表失败${res.data.msg}`)
+                return
+              }
+              state.addReqList.set(res.data.data.object_id, res.data.data)
+            }
+          ).catch(err => {
+            ElMessage(`获取群组${value.group_name}申请列表错误`,err)
+          })
+        })
+      } catch (err) {
+        ElMessage(`获取群组申请列表错误`,err)
       }
     }
     //获取历史消息记录
@@ -128,14 +150,39 @@ export default {
         // })
       }
     }
-    watchEffect(async () => {
+    const getGroupAddReq=()=>{
+      const getGroupsAddReq = () => {
+        //获取所有自己有管理权限的群的申请消息
+        try {
+          state.groupMap.forEach((value, key) => {
+            axios.get(`http://${rootAddr}/add_req/group?group_id=${key}`).then(
+                res => {
+                  if (res.data.code != 0) {
+                    ElMessage.error(`获取群组申请列表失败${res.data.msg}`)
+                    return
+                  }
+                  state.addReqList.set(res.data.data.object_id, res.data.data)
+                }
+            ).catch(err => {
+              ElMessage(`获取群组${value.group_name}申请列表错误`, err)
+            })
+          })
+        } catch (err) {
+          ElMessage(`获取群组申请列表错误`, err)
+        }
+      }
+    }
+    onMounted(async () => {
       await getgroupList()
       await getChatLog()
+      getGroupAddReq()
+      //每小时更新一次所有群的申请请求
+      setTimeout(() => {
+        getGroupAddReq()
+      }, 1000*60*60);
     });
 
     return {
-      groupList,
-      groupMap
     }
   },
   methods: {
@@ -147,5 +194,7 @@ export default {
 </script>
 
 <style scoped>
-
+.xian_select_name:hover {
+  color: aqua;
+}
 </style>

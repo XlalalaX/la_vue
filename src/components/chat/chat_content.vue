@@ -1,92 +1,159 @@
 <template>
-  <div class="chat-page" style="height: calc(100% - 1%);">
+  <el-tooltip v-if="state.isGroup" content="详情" placement="top" type="primary"><span class="xian_select_name"
+                                                                                       style="color: cornflowerblue">{{ state.groupMap.get(state.ShowGroupId) == null ? "unknown_group_name" : state.groupMap.get(state.ShowGroupId).group_name }}</span>
+  </el-tooltip>
+  <el-tooltip v-if="!state.isGroup" content="用户详情" placement="top" type="primary"><span class="xian_select_name"
+                                                                                            style="color: cornflowerblue"
+                                                                                            @click="showUserInfo(state.ShowFriendId)">{{ state.friendMap.get(state.ShowFriendId) == null ? "unknown_user_name" : state.friendMap.get(state.ShowFriendId).nick_name }}</span>
+  </el-tooltip>
+  <div class="chat-page" style="height: calc(100% - 20%);">
     <el-scrollbar wrap-class="chat-window" ref="scrollbar" style="height: 100%; overflow-y: scroll;">
       <ul style="height: 100%; overflow-y: auto;">
         <div v-for="msg in msgList" :key="msg.seq">
-          <el-row type="flex" :justify="msg.sendID != state.user.uid? 'start':'end'">
+          <el-row type="flex" v-if="msg.status==1" :justify="msg.sendID != state.user.uid? 'start':'end'">
             <div class="avatar-with-text" v-if="msg.sendID != state.user.uid">
-            <el-avatar
-                :size="40"
-                :src="msg.senderFaceURL"
-                :fit="cover">{{ msg.senderNickname }}</el-avatar>
-              <span >{{msg.senderNickname}}</span>
+              <el-avatar
+                  :size="40"
+                  :src="msg.senderFaceURL"
+                  :fit="cover"
+                  @click="showUserInfo(msg.sendID)"
+              >{{ msg.senderNickname }}
+              </el-avatar>
+              <span style="margin-inline-start:10px;">{{ msg.senderNickname }}</span>
             </div>
-            <el-card v-if="msg.contentType === 1" style="color: dodgerblue; height: 50%;margin-block:15px auto; max-width: 80%;overflow: auto;word-break: break-word" v-html="msg.content"></el-card>
-            <div v-else :class="msg.sendID == state.user.uid ? 'mr-10px': 'ml-10px'">
+              <!--              //文本类型-->
+              <el-card v-if="msg.contentType === 1"
+                       style="color: dodgerblue; height: 50%;margin-block:10px auto; max-width: 80%;overflow: auto;word-break: break-word; margin-inline-end:10px;"
+                       v-html="msg.content"></el-card>
+              <!--              //图片类型-->
               <el-image
-                  v-if="msg.contentType === 1"
-                  class="w-200px ha max-h-200px"
+                  v-if="msg.contentType === 2||msg.contentType === 12"
+                  style="max-width: 400px"
                   :src="msg.content"
                   :preview-src-list="[msg.content]"
                   :initial-index="4"
+                  @load="msg.content"
                   fit="cover"
               />
+              <!--              //音频类型-->
+              <el-card v-if="msg.contentType === 3||msg.contentType===13">
+                <video
+                    width="300"
+                    height="60"
+                    controls>
+                  <source :src="msg.content" type="video/mp4"/>
+                  您的浏览器不支持 HTML5 video 标签。
+                </video>
+              </el-card>
+              <!--              //视频类型-->
+            <el-card v-if="msg.contentType === 4||msg.contentType === 14">
               <video
-                  v-if="msg.contentType === 2"
                   width="300"
                   height="180"
-                  controls
-              >
-                <source :src="msg.content" type="video/mp4" />
+                  controls>
+                <source :src="msg.content" type="video/mp4"/>
                 您的浏览器不支持 HTML5 video 标签。
               </video>
-            </div>
+            </el-card>
+              <!--              //文件类型-->
+              <el-card v-if="msg.contentType === 5||msg.contentType === 15">
+                <div class="file">
+                  <files :href="msg.content" download>{{ msg.content }}</files>
+                </div>
+              </el-card>
+
             <div class="avatar-with-text" v-if="msg.sendID == state.user.uid">
               <el-avatar
                   :size="42"
-                  :src="msg.senderFaceURL"
-                  :fit="cover">{{ msg.senderNickname }}</el-avatar>
-              <span >{{msg.senderNickname}}</span>
+                  :src="state.user.face_url"
+                  :fit="cover"
+                  @click="showUserInfo(msg.sendID)"
+              >{{ msg.senderNickname }}
+              </el-avatar>
+              <span>{{ msg.senderNickname }}</span>
             </div>
-<!--            <el-icon v-if="msg.status === 1" :class="msg.sendId == state.userInfo?.id ? 'mr-10px': 'ml-10px'" class="is-loading pt-5px" size="40px">-->
-<!--              <i i="ep-loading" style="color: dodgerblue"></i>-->
-<!--            </el-icon>-->
+            <!--            <el-icon v-if="msg.status === 1" :class="msg.sendId == state.userInfo?.id ? 'mr-10px': 'ml-10px'" class="is-loading pt-5px" size="40px">-->
+            <!--              <i i="ep-loading" style="color: dodgerblue"></i>-->
+            <!--            </el-icon>-->
           </el-row>
-<!--          <el-card class="card">-->
-<!--            <div class="info">{{ msg.senderNickname+":" }}</div>-->
-<!--            <div class="content" v-html="msg.content"></div>-->
-<!--          </el-card>-->
+          <!--          <el-card class="card">-->
+          <!--            <div class="info">{{ msg.senderNickname+":" }}</div>-->
+          <!--            <div class="content" v-html="msg.content"></div>-->
+          <!--          </el-card>-->
         </div>
       </ul>
     </el-scrollbar>
   </div>
+  <el-dialog v-model="showSelf">
+    <self_info/>
+  </el-dialog>
+  <el-dialog v-model="showUser">
+    <user_info :uid="showUid"/>
+  </el-dialog>
 </template>
 
 <script>
-import { ElScrollbar, ElCard } from "element-plus";
-import { watchEffect, ref, inject, nextTick, computed, watch, reactive } from 'vue';
+import {ElScrollbar, ElCard} from "element-plus";
+import {watchEffect, ref, inject, nextTick, computed, watch, reactive} from 'vue';
 import {getChatId, state} from "../../store/state.js";
+import Self_info from "../info/self_info.vue";
+import User_info from "../info/user_info.vue";
+import axios from "axios";
+import {rootAddr} from "../../router/index.js";
+import {Files} from "@element-plus/icons-vue";
 
 export default {
-  components: { ElScrollbar, ElCard },
+  components: {
+    Files,
+    User_info,
+    Self_info,
+    ElScrollbar,
+    ElCard
+  },
   name: "chat_content",
-  data(){
-    return{
-      state
+  data() {
+    return {
+      state,
+      showSelf: false,
+      showUser: false,
+      showUid: state.user.uid
     }
+  },
+  methods: {
+    showUserInfo(id) {
+      this.showUid = id
+      console.log("this.showUid:", id)
+      if (id == state.user.uid) {
+        console.log("self:", id)
+        this.showSelf = true
+      } else {
+        console.log("user:", id)
+        this.showUser = true
+      }
+    },
   },
   setup() {
     const msgList = ref([])
-
+    console.log("state", state)
     // 监听 ShowGroupId、ShowFriendId 和 isGroup 这三个变量和它们对应的属性值是否发生改变
-    watch([() => state.ShowGroupId, () => state.ShowFriendId, () => state.isGroup, () => state.Record.get(state.ShowGroupId)?.length, () => state.Record.get(getChatId(state.ShowFriendId,state.user.uid))?.length], ([groupId, friendId, isGroup, groupMsgLength, friendMsgLength]) => {
+    watch([() => state.ShowGroupId, () => state.ShowFriendId, () => state.isGroup, () => state.Record.get(state.ShowGroupId)?.length, () => state.Record.get(getChatId(state.ShowFriendId, state.user.uid))?.length], ([groupId, friendId, isGroup, groupMsgLength, friendMsgLength]) => {
       if (isGroup) {
         if (groupMsgLength !== undefined && state.Record.has(groupId)) {
           msgList.value = state.Record.get(groupId)
-          console.log("消息队列：",msgList)
+          console.log("消息队列：", msgList)
           return;
         }
-        msgList.value=[]
+        msgList.value = []
       } else {
-        let chatId=getChatId(state.ShowFriendId,state.user.uid)
+        let chatId = getChatId(state.ShowFriendId, state.user.uid)
         if (friendMsgLength !== undefined && state.Record.has(chatId)) {
           msgList.value = state.Record.get(chatId)
-          console.log("消息队列：",msgList)
+          console.log("消息队列：", msgList)
           return;
         }
-        msgList.value=[]
+        msgList.value = []
       }
-    }, { immediate: true })
+    }, {immediate: true})
 
     return {
       msgList
@@ -103,7 +170,7 @@ export default {
   align-items: center;
 }
 
-.avatar-with-text span {
-  margin-top: 10px;
+.xian_select_name:hover {
+  color: aqua;
 }
 </style>
