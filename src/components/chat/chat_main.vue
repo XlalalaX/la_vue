@@ -244,18 +244,18 @@ export default {
             status: 0,
           });
 
-          if (file.size < 1024 * 1024 * 15){
-            // 创建FileReader对象
-            let reader = new FileReader();
-            // 定义读取文件时触发的回调函数
-            reader.onload =  function (event) {
-              // 获取读取的文件内容（以Blob的形式）
-              msg.file = new Uint8Array(event.target.result);
-              // 调用protobuf中的bytes类型进行传输
-            };
-            // 读取文件内容（以Blob的形式）
-            reader.readAsArrayBuffer(file)
-          }
+          // if (file.size < 1024 * 1024 * 15){
+          //   // 创建FileReader对象
+          //   let reader = new FileReader();
+          //   // 定义读取文件时触发的回调函数
+          //   reader.onload =  function (event) {
+          //     // 获取读取的文件内容（以Blob的形式）
+          //     msg.file = new Uint8Array(event.target.result);
+          //     // 调用protobuf中的bytes类型进行传输
+          //   };
+          //   // 读取文件内容（以Blob的形式）
+          //   reader.readAsArrayBuffer(file)
+          // }
 
           if (state.isGroup) {
             msg.groupID = state.ShowGroupId
@@ -325,16 +325,36 @@ export default {
                     return
                   }
                   msg.content = response.data.data
+                  console.log("开始发送文件:", msg)
+                  console.log("发送文件二进制", pb_msg.Msg.encode(msg).finish())
+                  this.websocket.send(pb_msg.Msg.encode(msg).finish());
+                  // this.wsSend(pb_msg.Msg.encode(msg).finish())
+                  console.log("发送文件成功:", msg)
+                  let newMsg = pb_msg.Msg.decode(pb_msg.Msg.encode(msg).finish())
+                  console.log("解析压缩后的文件:", newMsg)
                   console.log("发送文件成功")
+                }else {
+                  // 创建FileReader对象
+                  let reader = new FileReader();
+                  // 定义读取文件时触发的回调函数
+                  reader.onload =  function (event) {
+                    // 获取读取的文件内容（以Blob的形式）
+                    msg.file = new Uint8Array(event.target.result);
+                    // 调用protobuf中的bytes类型进行传输
+                  };
+                  // 读取文件内容（以Blob的形式）
+                  reader.readAsArrayBuffer(file)
+                  reader.onloadend =  ()=> {
+                    console.log("开始发送文件:", msg)
+                    console.log("发送文件二进制", pb_msg.Msg.encode(msg).finish())
+                    this.websocket.send(pb_msg.Msg.encode(msg).finish());
+                    // this.wsSend(pb_msg.Msg.encode(msg).finish())
+                    console.log("发送文件成功:", msg)
+                    let newMsg = pb_msg.Msg.decode(pb_msg.Msg.encode(msg).finish())
+                    console.log("解析压缩后的文件:", newMsg)
+                    console.log("发送文件成功")
+                  }
                 }
-                console.log("开始发送文件:", msg)
-                console.log("发送文件二进制", pb_msg.Msg.encode(msg).finish())
-                this.websocket.send(pb_msg.Msg.encode(msg).finish());
-                // this.wsSend(pb_msg.Msg.encode(msg).finish())
-                console.log("发送文件成功:", msg)
-                let newMsg = pb_msg.Msg.decode(pb_msg.Msg.encode(msg).finish())
-                console.log("解析压缩后的文件:", newMsg)
-
 
                 // 滚动到底部
                 await nextTick(() => {
