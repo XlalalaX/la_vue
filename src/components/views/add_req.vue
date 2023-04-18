@@ -1,13 +1,16 @@
 <template>
-  <el-menu-item-group v-for="(key,addReq) in state.addReqList" :key="key">
-    <el-menu-item>
-      <span style="max-width: 50%" @click="showInfo(addReq.send_id)" v-if="addReq.group_id==''">{{ addReq.send_nick_name }} 请求添加你为好友</span>
-      <span style="max-width: 50%" @click="showInfo(addReq.send_id)" v-if="addReq.group_id!=''">{{ addReq.send_nick_name }} 请求加入 {{addReq.group_name}}</span>
-      <el-button type="text" @click="handleAddReq(addReq.object_id,true)">同意</el-button>
-      <el-button type="text" @click="handleAddReq(addReq.object_id,false)">拒绝</el-button>
+  <el-menu v-for="addReq  in state.addReqList.values()" :key="addReq.object_id" >
+    <el-menu-item @click="showInfo(addReq)">
+      <el-text style="max-width: 50%"  v-if="addReq.recv_id!=''">{{ addReq.send_nick_name }} 请求添加你为好友</el-text>
+      <el-text style="max-width: 50%"  v-if="addReq.recv_id==''">{{ addReq.send_nick_name }} 请求加入 {{addReq.group_name}}</el-text>
+      <div style="max-width: 150px;margin-inline-start: auto;margin-top: -30px;">
+      <el-button style="margin-right: 10px" type="success" size="small" @click="handleAddReq(addReq.object_id,true)">同意</el-button>
+      <el-button  type="danger" size="small" @click="handleAddReq(addReq.object_id,false)">拒绝</el-button>
+      </div>
     </el-menu-item>
-  </el-menu-item-group>
-  <el-dialog v-model="is_showInfo">
+
+  </el-menu>
+  <el-dialog v-model="is_showInfo" style="width: auto;max-width: 600px">
     <user_info :uid="showInfoUid"></user_info>
   </el-dialog>
 </template>
@@ -17,6 +20,7 @@ import {state} from "../../store/state.js";
 import axios from "axios";
 import {ElMessage} from "element-plus";
 import User_info from "../info/user_info.vue";
+import {onMounted} from "vue";
 
 // 全局添加请求拦截器
 axios.interceptors.request.use(function (config) {
@@ -59,9 +63,19 @@ export default {
       )
     },
     showInfo(uid) {
+      console.log("显示用户id", uid)
       this.showInfoUid = uid
       this.is_showInfo = true
     },
+  },
+  setup() {
+    onMounted(()=>{
+      console.log("add_req:",state.addReqList)
+      for (let [key, value] of state.addReqList) {
+        console.log(key, value.send_nick_name);
+      }
+    })
+    return {}
   }
 }
 </script>

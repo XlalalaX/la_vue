@@ -21,6 +21,9 @@
         <el-form ref="registerForm"
                  :model="registerForm" :rules="registerRules" :scroll-to-error="true" label-position='left'
                  label-width='300'>
+          <el-form-item label="昵称" prop="name" class="form-item-align">
+            <el-input v-model="registerForm.name"></el-input>
+          </el-form-item>
           <el-form-item label="邮箱" prop="email" class="form-item-align">
             <el-input v-model="registerForm.email"></el-input>
           </el-form-item>
@@ -134,17 +137,15 @@ export default {
             if (response.data.code != 0) {
               ElMessage.error(`登陆失败, ${response.data.msg}`);
             } else {
-              localStorage.setItem("la_token", response.data.data.token)
-              localStorage.setItem("la_user", JSON.stringify(response.data.data.user))
               //赋值给本地存储
               state.user=response.data.data.user
-
-              state.user.face_url=
               state.token=response.data.data.token
               await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${state.user.uid}`)
                 .then((response) => {
                   state.user.face_url = response.data.data
                 })
+              localStorage.setItem("la_token", state.token)
+              localStorage.setItem("la_user", JSON.stringify(state.user))
               ElMessage.success(`Welcome, ${response.data.data.user.nick_name}!`);
               await router.push("/chat_main")
             }
@@ -210,7 +211,7 @@ export default {
             if (response.data.code != 0) {
               ElMessage.error(`注册失败,${response.data.msg}`);
             } else {
-              ElMessage.info("注册成功");
+              ElMessage.success("注册成功");
             }
           } catch (err) {
             // Handle error message

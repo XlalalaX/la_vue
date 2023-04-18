@@ -29,13 +29,13 @@ export const pb_msg = $root.pb_msg = (() => {
          * @property {string|null} [senderNickname] Msg senderNickname
          * @property {string|null} [senderFaceURL] Msg senderFaceURL
          * @property {number|null} [sessionType] Msg sessionType
-         * @property {number|null} [msgFrom] Msg msgFrom
          * @property {number|null} [contentType] Msg contentType
          * @property {string|null} [content] Msg content
-         * @property {number|null} [seq] Msg seq
          * @property {number|Long|null} [sendTime] Msg sendTime
          * @property {number|null} [status] Msg status
          * @property {Uint8Array|null} [file] Msg file
+         * @property {string|null} [fileName] Msg fileName
+         * @property {number|null} [fileSize] Msg fileSize
          * @property {string|null} [selfID] Msg selfID
          */
 
@@ -111,14 +111,6 @@ export const pb_msg = $root.pb_msg = (() => {
         Msg.prototype.sessionType = 0;
 
         /**
-         * Msg msgFrom.
-         * @member {number} msgFrom
-         * @memberof pb_msg.Msg
-         * @instance
-         */
-        Msg.prototype.msgFrom = 0;
-
-        /**
          * Msg contentType.
          * @member {number} contentType
          * @memberof pb_msg.Msg
@@ -133,14 +125,6 @@ export const pb_msg = $root.pb_msg = (() => {
          * @instance
          */
         Msg.prototype.content = "";
-
-        /**
-         * Msg seq.
-         * @member {number} seq
-         * @memberof pb_msg.Msg
-         * @instance
-         */
-        Msg.prototype.seq = 0;
 
         /**
          * Msg sendTime.
@@ -165,6 +149,22 @@ export const pb_msg = $root.pb_msg = (() => {
          * @instance
          */
         Msg.prototype.file = $util.newBuffer([]);
+
+        /**
+         * Msg fileName.
+         * @member {string} fileName
+         * @memberof pb_msg.Msg
+         * @instance
+         */
+        Msg.prototype.fileName = "";
+
+        /**
+         * Msg fileSize.
+         * @member {number} fileSize
+         * @memberof pb_msg.Msg
+         * @instance
+         */
+        Msg.prototype.fileSize = 0;
 
         /**
          * Msg selfID.
@@ -212,20 +212,20 @@ export const pb_msg = $root.pb_msg = (() => {
                 writer.uint32(/* id 6, wireType 2 =*/50).string(message.senderFaceURL);
             if (message.sessionType != null && Object.hasOwnProperty.call(message, "sessionType"))
                 writer.uint32(/* id 7, wireType 0 =*/56).int32(message.sessionType);
-            if (message.msgFrom != null && Object.hasOwnProperty.call(message, "msgFrom"))
-                writer.uint32(/* id 8, wireType 0 =*/64).int32(message.msgFrom);
             if (message.contentType != null && Object.hasOwnProperty.call(message, "contentType"))
-                writer.uint32(/* id 9, wireType 0 =*/72).int32(message.contentType);
+                writer.uint32(/* id 8, wireType 0 =*/64).int32(message.contentType);
             if (message.content != null && Object.hasOwnProperty.call(message, "content"))
-                writer.uint32(/* id 10, wireType 2 =*/82).string(message.content);
-            if (message.seq != null && Object.hasOwnProperty.call(message, "seq"))
-                writer.uint32(/* id 11, wireType 0 =*/88).uint32(message.seq);
+                writer.uint32(/* id 9, wireType 2 =*/74).string(message.content);
             if (message.sendTime != null && Object.hasOwnProperty.call(message, "sendTime"))
-                writer.uint32(/* id 12, wireType 0 =*/96).int64(message.sendTime);
+                writer.uint32(/* id 10, wireType 0 =*/80).int64(message.sendTime);
             if (message.status != null && Object.hasOwnProperty.call(message, "status"))
-                writer.uint32(/* id 13, wireType 0 =*/104).int32(message.status);
+                writer.uint32(/* id 11, wireType 0 =*/88).int32(message.status);
             if (message.file != null && Object.hasOwnProperty.call(message, "file"))
-                writer.uint32(/* id 14, wireType 2 =*/114).bytes(message.file);
+                writer.uint32(/* id 12, wireType 2 =*/98).bytes(message.file);
+            if (message.fileName != null && Object.hasOwnProperty.call(message, "fileName"))
+                writer.uint32(/* id 13, wireType 2 =*/106).string(message.fileName);
+            if (message.fileSize != null && Object.hasOwnProperty.call(message, "fileSize"))
+                writer.uint32(/* id 14, wireType 0 =*/112).int32(message.fileSize);
             if (message.selfID != null && Object.hasOwnProperty.call(message, "selfID"))
                 writer.uint32(/* id 15, wireType 2 =*/122).string(message.selfID);
             return writer;
@@ -291,31 +291,31 @@ export const pb_msg = $root.pb_msg = (() => {
                         break;
                     }
                 case 8: {
-                        message.msgFrom = reader.int32();
-                        break;
-                    }
-                case 9: {
                         message.contentType = reader.int32();
                         break;
                     }
-                case 10: {
+                case 9: {
                         message.content = reader.string();
                         break;
                     }
-                case 11: {
-                        message.seq = reader.uint32();
-                        break;
-                    }
-                case 12: {
+                case 10: {
                         message.sendTime = reader.int64();
                         break;
                     }
-                case 13: {
+                case 11: {
                         message.status = reader.int32();
                         break;
                     }
-                case 14: {
+                case 12: {
                         message.file = reader.bytes();
+                        break;
+                    }
+                case 13: {
+                        message.fileName = reader.string();
+                        break;
+                    }
+                case 14: {
+                        message.fileSize = reader.int32();
                         break;
                     }
                 case 15: {
@@ -378,18 +378,12 @@ export const pb_msg = $root.pb_msg = (() => {
             if (message.sessionType != null && message.hasOwnProperty("sessionType"))
                 if (!$util.isInteger(message.sessionType))
                     return "sessionType: integer expected";
-            if (message.msgFrom != null && message.hasOwnProperty("msgFrom"))
-                if (!$util.isInteger(message.msgFrom))
-                    return "msgFrom: integer expected";
             if (message.contentType != null && message.hasOwnProperty("contentType"))
                 if (!$util.isInteger(message.contentType))
                     return "contentType: integer expected";
             if (message.content != null && message.hasOwnProperty("content"))
                 if (!$util.isString(message.content))
                     return "content: string expected";
-            if (message.seq != null && message.hasOwnProperty("seq"))
-                if (!$util.isInteger(message.seq))
-                    return "seq: integer expected";
             if (message.sendTime != null && message.hasOwnProperty("sendTime"))
                 if (!$util.isInteger(message.sendTime) && !(message.sendTime && $util.isInteger(message.sendTime.low) && $util.isInteger(message.sendTime.high)))
                     return "sendTime: integer|Long expected";
@@ -399,6 +393,12 @@ export const pb_msg = $root.pb_msg = (() => {
             if (message.file != null && message.hasOwnProperty("file"))
                 if (!(message.file && typeof message.file.length === "number" || $util.isString(message.file)))
                     return "file: buffer expected";
+            if (message.fileName != null && message.hasOwnProperty("fileName"))
+                if (!$util.isString(message.fileName))
+                    return "fileName: string expected";
+            if (message.fileSize != null && message.hasOwnProperty("fileSize"))
+                if (!$util.isInteger(message.fileSize))
+                    return "fileSize: integer expected";
             if (message.selfID != null && message.hasOwnProperty("selfID"))
                 if (!$util.isString(message.selfID))
                     return "selfID: string expected";
@@ -431,14 +431,10 @@ export const pb_msg = $root.pb_msg = (() => {
                 message.senderFaceURL = String(object.senderFaceURL);
             if (object.sessionType != null)
                 message.sessionType = object.sessionType | 0;
-            if (object.msgFrom != null)
-                message.msgFrom = object.msgFrom | 0;
             if (object.contentType != null)
                 message.contentType = object.contentType | 0;
             if (object.content != null)
                 message.content = String(object.content);
-            if (object.seq != null)
-                message.seq = object.seq >>> 0;
             if (object.sendTime != null)
                 if ($util.Long)
                     (message.sendTime = $util.Long.fromValue(object.sendTime)).unsigned = false;
@@ -455,6 +451,10 @@ export const pb_msg = $root.pb_msg = (() => {
                     $util.base64.decode(object.file, message.file = $util.newBuffer($util.base64.length(object.file)), 0);
                 else if (object.file.length >= 0)
                     message.file = object.file;
+            if (object.fileName != null)
+                message.fileName = String(object.fileName);
+            if (object.fileSize != null)
+                message.fileSize = object.fileSize | 0;
             if (object.selfID != null)
                 message.selfID = String(object.selfID);
             return message;
@@ -481,10 +481,8 @@ export const pb_msg = $root.pb_msg = (() => {
                 object.senderNickname = "";
                 object.senderFaceURL = "";
                 object.sessionType = 0;
-                object.msgFrom = 0;
                 object.contentType = 0;
                 object.content = "";
-                object.seq = 0;
                 if ($util.Long) {
                     let long = new $util.Long(0, 0, false);
                     object.sendTime = options.longs === String ? long.toString() : options.longs === Number ? long.toNumber() : long;
@@ -498,6 +496,8 @@ export const pb_msg = $root.pb_msg = (() => {
                     if (options.bytes !== Array)
                         object.file = $util.newBuffer(object.file);
                 }
+                object.fileName = "";
+                object.fileSize = 0;
                 object.selfID = "";
             }
             if (message.sendID != null && message.hasOwnProperty("sendID"))
@@ -514,14 +514,10 @@ export const pb_msg = $root.pb_msg = (() => {
                 object.senderFaceURL = message.senderFaceURL;
             if (message.sessionType != null && message.hasOwnProperty("sessionType"))
                 object.sessionType = message.sessionType;
-            if (message.msgFrom != null && message.hasOwnProperty("msgFrom"))
-                object.msgFrom = message.msgFrom;
             if (message.contentType != null && message.hasOwnProperty("contentType"))
                 object.contentType = message.contentType;
             if (message.content != null && message.hasOwnProperty("content"))
                 object.content = message.content;
-            if (message.seq != null && message.hasOwnProperty("seq"))
-                object.seq = message.seq;
             if (message.sendTime != null && message.hasOwnProperty("sendTime"))
                 if (typeof message.sendTime === "number")
                     object.sendTime = options.longs === String ? String(message.sendTime) : message.sendTime;
@@ -531,6 +527,10 @@ export const pb_msg = $root.pb_msg = (() => {
                 object.status = message.status;
             if (message.file != null && message.hasOwnProperty("file"))
                 object.file = options.bytes === String ? $util.base64.encode(message.file, 0, message.file.length) : options.bytes === Array ? Array.prototype.slice.call(message.file) : message.file;
+            if (message.fileName != null && message.hasOwnProperty("fileName"))
+                object.fileName = message.fileName;
+            if (message.fileSize != null && message.hasOwnProperty("fileSize"))
+                object.fileSize = message.fileSize;
             if (message.selfID != null && message.hasOwnProperty("selfID"))
                 object.selfID = message.selfID;
             return object;

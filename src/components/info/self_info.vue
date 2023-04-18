@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div style="max-width: 600px;">
     <el-image style="width: 100px; height: 100px;"
               :src="info.face_url"
               :zoom-rate="1.2"

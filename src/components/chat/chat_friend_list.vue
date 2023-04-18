@@ -53,6 +53,10 @@ export default {
           ElMessage.error(`获取好友列表失败${res.data.msg}`)
           return
         }
+        if (res.data.data.friend_list== null) {
+          ElMessage.warning(`您还没有好友`)
+          return
+        }
         state.friendList = res.data.data.friend_list
         console.log(`this.friendList:`,state.friendList)
         if(state.friendList.length>0){
@@ -78,6 +82,7 @@ export default {
          let respond=await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${res.data.data.uid}`)
          res.data.data.face_url=respond.data.data
          state.friendMap.set(state.friendList[i],res.data.data)
+         state.saveUsersFaceUrl.set(state.friendList[i],respond.data.data)
        }
       }catch (err){
         ElMessage(`获取好友详情错误${err}`)

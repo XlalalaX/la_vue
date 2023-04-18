@@ -14,11 +14,11 @@
             </el-select>
           </template>
         </el-input>
-        <el-scrollbar>
-          <div v-for="item in userSearchResult" :key="item.uid">
-            <el-card @click="userShow(item.uid)">{{item.nick_name}}</el-card>
+        <el-menu>
+          <div v-for="item in userSearchResult" :key="item.uid" >
+            <el-menu-item @click="userShow(item.uid)" style="display: block">{{item.nick_name}}</el-menu-item>
           </div>
-        </el-scrollbar>
+        </el-menu>
       </el-tab-pane>
       <el-tab-pane label="群组" name="group">
         <el-input v-model="inputStr">
@@ -32,18 +32,18 @@
             </el-select>
           </template>
         </el-input>
-        <el-scrollbar>
+        <el-menu>
           <div v-for="item in groupSearchResult" :key="item.group_id">
-            <el-card @click="groupShow(item.group_id)">{{item.group_name}}</el-card>
+            <el-menu-item @click="groupShow(item.group_id)" style="display: block">{{item.group_name}}</el-menu-item>
           </div>
-        </el-scrollbar>
+        </el-menu>
       </el-tab-pane>
     </el-tabs>
   </div>
-  <el-dialog v-model="is_userShow">
+  <el-dialog v-model="is_userShow"  style="width: auto;max-width: 600px">
     <user_info :uid="userShowId"></user_info>
   </el-dialog>
-  <el-dialog v-model="is_groupShow">
+  <el-dialog v-model="is_groupShow"  style="width: auto;max-width: 800px">
     <group_info :group_id="groupShowId"></group_info>
   </el-dialog>
 </template>
@@ -54,6 +54,8 @@ import axios from "axios";
 import {ElMessage} from "element-plus";
 import {rootAddr} from "../../router/index.js";
 import {state} from "../../store/state.js";
+import User_info from "../info/user_info.vue";
+import Group_info from "../info/group_info.vue";
 
 // 全局添加请求拦截器
 axios.interceptors.request.use(function (config) {
@@ -67,6 +69,7 @@ axios.interceptors.request.use(function (config) {
 
 export default {
   name: "find",
+  components: {Group_info, User_info},
   data(){
     return {
       activeName: 'user',
@@ -84,12 +87,13 @@ export default {
   },
   methods: {
     userShow(id){
-      this.is_userShow = true
       this.userShowId = id
+      this.is_userShow = true
+      console.log("userShow",id)
     },
     groupShow(id){
-      this.is_groupShow = true
       this.groupShowId = id
+      this.is_groupShow = true
     },
     searchUser(){
       axios.get(`http://${rootAddr}/user/find_user_list?query_type=${this.userSearchType}&query_str=${this.inputStr}`).then(res=>{

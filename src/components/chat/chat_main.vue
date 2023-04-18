@@ -22,21 +22,20 @@
           <el-main style="">
             <chat_content/>
           </el-main>
-          <el-footer style="height: 10%;">
-            <el-icon>
-              <FolderAdd/>
-            </el-icon>
-            <el-input @paste="handlePaste" v-model="state.inputMsg" placeholder="请输入消息"
-                      style="width: 80%;"></el-input>
+          <el-footer style="height: 10%;" v-if="state.isGroup?state.groupList.length>0:state.friendList.length>0">
+            <el-input @paste="handlePaste" v-model="state.inputMsg" placeholder="请输入消息" style="width: 80%;"></el-input>
             <el-button type="primary" @click="sendMessage" style="width: 20%;">发送</el-button>
           </el-footer>
         </el-container>
       </el-container>
+      <div> <!-- 新增加的 div 标签 -->
+        <el-dialog v-model="showAddReq">
+          <add_req/>
+        </el-dialog>
+      </div>
     </el-container>
   </div>
-  <el-dialog v-model="showAddReq">
-    <add_req/>
-  </el-dialog>
+
 </template>
 
 
@@ -109,6 +108,7 @@ export default {
         console.log("链接url:", url)
         websocket.value = new WebSocket(url);
         websocket.value.binaryType = 'arraybuffer';
+        //在接收到服务器的消息时触发
         websocket.value.onmessage = async (event) => {
           const msg = pb_msg.Msg.decode(new Uint8Array(event.data));
           //忽视发送失败的消息
@@ -116,7 +116,14 @@ export default {
             return
           }
           console.log("返回消息解析得：", msg)
-          msg.senderFaceURL = `http://${rootAddr}/user_not/user_face_url?uid=${msg.sendID}`
+          msg.senderFaceURL = state.saveUsersFaceUrl.get(msg.sendID)
+          if (msg.senderFaceURL== undefined) {
+            let res= await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${msg.sendID}`)
+            if (res.data.code == 0) {
+              msg.senderFaceURL = res.data.data
+              state.saveUsersFaceUrl.set(msg.sendID, msg.senderFaceURL)
+            }
+          }
 
           console.log("开始获取文件url")
           switch (msg.contentType) {
@@ -132,8 +139,8 @@ export default {
             case 13:
             case 14:
             case 15:
-              console.log("从oss拉取文件url")
-              let res = await axios.get(`http://${rootAddr}/chat_log/file?uid=${msg.sendID}&file_name=${msg.content}`)
+              console.log("从oss拉取文件url:",msg.content)
+              let res = await axios.get(msg.content)
               if (res.data.code == 0) {
                 msg.content = res.data.data
               }
@@ -149,16 +156,12 @@ export default {
             if (!state.Record.has(chatId)) {
               state.Record.set(chatId, [])
             }
-            //赋值seq后面遍历要
-            msg.seq = state.Record.get(chatId)?.length ?? 0
             state.Record.get(chatId).push(msg)
           } else {
             //群聊
             if (!state.Record.has(msg.groupID)) {
               state.Record.set(msg.groupID, [])
             }
-            //赋值req后面遍历要
-            msg.seq = state.Record.get(msg.sendID)?.length ?? 0
             state.Record.get(msg.groupID).push(msg)
           }
         };
@@ -171,8 +174,10 @@ export default {
             console.log("获取别人添加自己的添加请求:", res.data)
             if (res.data.code == 0) {
               res.data.data.forEach(item => {
-                state.addReqList.set(item.uid, item)
+                state.addReqList.set(item.object_id, item)
+                console.log(`获取别人添加自己的添加请求item：`,item)
               })
+              console.log(`获取别人添加自己的添加请求2：`,state.addReqList)
             }
           }
       ).catch(err => {
@@ -238,24 +243,13 @@ export default {
             sessionType: 0,
             msgFrom: 1,
             contentType: 5,
-            content: file.name,
+            content: "",
+            fileName: file.name,
+            fileSize: file.size,
             seq: 0,
             sendTime: Date.now(),
             status: 0,
           });
-
-          if (file.size < 1024 * 1024 * 15){
-            // 创建FileReader对象
-            let reader = new FileReader();
-            // 定义读取文件时触发的回调函数
-            reader.onload =  function (event) {
-              // 获取读取的文件内容（以Blob的形式）
-              msg.file = new Uint8Array(event.target.result);
-              // 调用protobuf中的bytes类型进行传输
-            };
-            // 读取文件内容（以Blob的形式）
-            reader.readAsArrayBuffer(file)
-          }
 
           if (state.isGroup) {
             msg.groupID = state.ShowGroupId
@@ -309,32 +303,51 @@ export default {
               async () => {
                 //发送文件
                 //如果文件大小超过15M，改为使用阿里云的oss保存
-                if (file.size > 1024 * 1024 * 15) {
-                  const formData = new FormData();
-
-                  formData.append('file', file);
-                  formData.append('file_size', file.size);
-
-                  let response = await axios.post('http://127.0.0.1:3001/chat_log/file', formData, {
-                    headers: {
-                      'Content-Type': 'multipart/form-data'
-                    }
-                  })
-                  if (response.data.code == -1) {
-                    ElMessage.error("发送文件失败：", response.data.msg)
-                    return
+                if (file.size <= 1024 * 1024 * 15)  {
+                  // 创建FileReader对象
+                  let reader = new FileReader();
+                  // 定义读取文件时触发的回调函数
+                  reader.onload =  function (event) {
+                    // 获取读取的文件内容（以Blob的形式）
+                    msg.file = new Uint8Array(event.target.result);
+                    // 调用protobuf中的bytes类型进行传输
+                  };
+                  reader.onloadend=()=>{
+                    console.log("开始发送文件:", msg)
+                    console.log("发送文件二进制", pb_msg.Msg.encode(msg).finish())
+                    this.websocket.send(pb_msg.Msg.encode(msg).finish());
+                    console.log("发送文件成功:", msg)
+                    let newMsg = pb_msg.Msg.decode(pb_msg.Msg.encode(msg).finish())
+                    console.log("解析压缩后的文件:", newMsg)
+                    console.log("发送文件成功")
                   }
-                  msg.content = response.data.data
-                  console.log("发送文件成功")
+                  // 读取文件内容（以Blob的形式）
+                  reader.readAsArrayBuffer(file)
+                  return
                 }
+                const formData = new FormData();
+
+                formData.append('file', file);
+                formData.append('file_size', file.size);
+
+                let response = await axios.post('http://127.0.0.1:3001/chat_log/file', formData, {
+                  headers: {
+                    'Content-Type': 'multipart/form-data'
+                  }
+                })
+                if (response.data.code == -1) {
+                  ElMessage.error("发送文件失败：", response.data.msg)
+                  return
+                }
+                //直接存放文件url
+                msg.content = `http://${rootAddr}/chat_log/file?uid=${msg.sendID}&file_name=${encodeURIComponent(response.data.data)}`
                 console.log("开始发送文件:", msg)
                 console.log("发送文件二进制", pb_msg.Msg.encode(msg).finish())
                 this.websocket.send(pb_msg.Msg.encode(msg).finish());
-                // this.wsSend(pb_msg.Msg.encode(msg).finish())
                 console.log("发送文件成功:", msg)
                 let newMsg = pb_msg.Msg.decode(pb_msg.Msg.encode(msg).finish())
                 console.log("解析压缩后的文件:", newMsg)
-
+                console.log("发送文件成功")
 
                 // 滚动到底部
                 await nextTick(() => {
