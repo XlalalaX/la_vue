@@ -63,7 +63,10 @@
 <!--              </div>-->
               <downloadFile :fileUrl="msg.content" :file-name="msg.fileName" :file-size="msg.fileSize" :is-large-file="msg.contentType===15"/>
             </el-card>
-
+<!--            发起语音聊天类型-->
+            <el-button v-if="msg.contentType === 10"
+                     style="color: dodgerblue; height: 50%;margin-block:10px auto; max-width: 80%;overflow: auto;word-break: break-word; margin-inline-end:10px;"
+                     v-html="msg.content" @click="startAudioChat"></el-button>
             <div class="avatar-with-text" v-if="msg.sendID === state.user.uid">
               <el-avatar
                   :size="42"
@@ -123,6 +126,7 @@ export default {
       showGroupUid: state.ShowGroupId
     }
   },
+  emits:['startAudioChat'],
   methods: {
     showUserInfo(id) {
       this.showUid = id
@@ -139,9 +143,10 @@ export default {
       this.showGroupUid = id
       console.log("this.showGroupUid:", id)
       this.showGroup = true
-    }
+    },
+
   },
-  setup() {
+  setup(props,context) {
     const msgList = ref([])
     console.log("state", state)
     // 监听 ShowGroupId、ShowFriendId 和 isGroup 这三个变量和它们对应的属性值是否发生改变
@@ -163,9 +168,13 @@ export default {
         msgList.value = []
       }
     }, {immediate: true})
-
+    function startAudioChat() {
+      console.log("startAudioChat")
+      context.emit('startAudioChat')
+    }
     return {
-      msgList
+      msgList,
+      startAudioChat
     }
   }
 }

@@ -20,10 +20,20 @@
         </el-aside>
         <el-container style="width: 80%;">
           <el-main style="">
-            <chat_content/>
+            <chat_content @startAudioChat="startRecording"/>
           </el-main>
           <el-footer style="height: 10%;" v-if="state.isGroup?state.groupList.length>0:state.friendList.length>0">
-            <el-input @paste="handlePaste" v-model="state.inputMsg" placeholder="请输入消息" style="width: 80%;"></el-input>
+            <div>
+              <!-- 录音的按钮 -->
+              <el-button type="primary" size="small" @click="startRecording" v-if="!isRecording">
+                发起语音通话
+              </el-button>
+              <el-button type="danger" size="small" @click="stopRecording" v-if="isRecording">
+                结束语音通话
+              </el-button>
+            </div>
+            <el-input @paste="handlePaste" v-model="state.inputMsg" placeholder="请输入消息"
+                      style="width: 80%;"></el-input>
             <el-button type="primary" @click="sendMessage" style="width: 20%;">发送</el-button>
           </el-footer>
         </el-container>
@@ -52,6 +62,8 @@ import ChatHeader from "./chat-header.vue";
 import {rootAddr} from "../../router/index.js";
 import Add_req from "../views/add_req.vue";
 import {ElMessage, ElMessageBox} from "element-plus";
+import Recorder from 'js-audio-recorder'
+
 
 // 全局添加请求拦截器
 axios.interceptors.request.use(function (config) {
@@ -74,25 +86,13 @@ export default {
   },
   setup() {
 
+
     // const MyMessage = pb_msg.lookupType('root.pb_msg');
 
     const route = useRoute();
 
     const websocket = ref(null);
     let seq = 0;
-
-    const blobToUint8Array = function blobToUint8Array(blob) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.addEventListener('loadend', () => {
-          resolve(new Uint8Array(reader.result));
-        });
-        reader.addEventListener('error', () => {
-          reject(reader.error);
-        });
-        reader.readAsArrayBuffer(blob);
-      });
-    }
 
 
     onMounted(() => {
@@ -115,17 +115,17 @@ export default {
           if (msg.status != 1) {
             return
           }
-          console.log("返回消息解析得：", msg)
+          // console.log("返回消息解析得：", msg)
           msg.senderFaceURL = state.saveUsersFaceUrl.get(msg.sendID)
-          if (msg.senderFaceURL== undefined) {
-            let res= await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${msg.sendID}`)
+          if (msg.senderFaceURL == undefined) {
+            let res = await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${msg.sendID}`)
             if (res.data.code == 0) {
               msg.senderFaceURL = res.data.data
               state.saveUsersFaceUrl.set(msg.sendID, msg.senderFaceURL)
             }
           }
 
-          console.log("开始获取文件url")
+          // console.log("开始获取文件url")
           switch (msg.contentType) {
             case 2:
             case 3:
@@ -134,12 +134,22 @@ export default {
               console.log("从消息拉取文件url")
               msg.content = URL.createObjectURL(new Blob([msg.file]))
               break;
+            case 9:
+              //只有在设置为录音状态时才接收语音消息
+              if (isRecording) {
+                if(msg.sendID==state.user.uid){
+                  return
+                }
+                // console.log("接收到语音消息,", msg)
+                audioDataList.value.push(URL.createObjectURL(new Blob([msg.file])));
+              }
+              return;
 
             case 12:
             case 13:
             case 14:
             case 15:
-              console.log("从oss拉取文件url:",msg.content)
+              console.log("从oss拉取文件url:", msg.content)
               let res = await axios.get(msg.content)
               if (res.data.code == 0) {
                 msg.content = res.data.data
@@ -156,13 +166,18 @@ export default {
             if (!state.Record.has(chatId)) {
               state.Record.set(chatId, [])
             }
-            state.Record.get(chatId).push(msg)
+
+              state.Record.get(chatId).push(msg)
+
           } else {
             //群聊
             if (!state.Record.has(msg.groupID)) {
               state.Record.set(msg.groupID, [])
             }
-            state.Record.get(msg.groupID).push(msg)
+
+
+              state.Record.get(msg.groupID).push(msg)
+
           }
         };
       }).catch(err => {
@@ -175,9 +190,9 @@ export default {
             if (res.data.code == 0) {
               res.data.data.forEach(item => {
                 state.addReqList.set(item.object_id, item)
-                console.log(`获取别人添加自己的添加请求item：`,item)
+                console.log(`获取别人添加自己的添加请求item：`, item)
               })
-              console.log(`获取别人添加自己的添加请求2：`,state.addReqList)
+              console.log(`获取别人添加自己的添加请求2：`, state.addReqList)
             }
           }
       ).catch(err => {
@@ -219,10 +234,170 @@ export default {
     };
     //todo:边栏改变宽度
 
+
+    const isRecording = ref(false); // 是否正在录制
+    const audioDataList = ref([]); // 录制后生成的音频数据
+    const mediaRecorder = ref(new Recorder({
+      type: 'mp3',
+      sampleRate: 16000,
+      bitRate: 16,
+      numChannels: 1,
+      compiling: true,
+    }));
+    let timerId; // 定时器 ID
+    let audio_recv_id = state.user.uid; // 接收者 ID
+    const startRecording = () => {
+      isRecording.value = true;
+
+      if (state.isGroup){
+        audio_recv_id = state.ShowGroupId
+      }else {
+        audio_recv_id = state.ShowFriendId
+      }
+
+      let msg = pb_msg.Msg.create({
+        sendID: state.user.uid,
+        recvID: "",
+        groupID: "",
+        senderPlatformID: 1,
+        senderNickname: state.user.nick_name,
+        senderFaceURL: state.user.face_url,
+        sessionType: 0,
+        msgFrom: 1,
+        contentType: 10,//发起语音聊天类型
+        content: "开始语音聊天",
+        seq: 0,
+        sendTime: Date.now(),
+        status: 0,
+      });
+      if (state.isGroup) {
+        msg.groupID = audio_recv_id
+        msg.sessionType = 1
+      } else {
+        msg.recvID = audio_recv_id
+        msg.sessionType = 0
+      }
+      websocket.value.send(pb_msg.Msg.encode(msg).finish());
+
+      mediaRecorder.value = new Recorder({
+        type: 'mp3',
+        sampleRate: 16000,
+        bitRate: 16,
+        numChannels: 1,
+        compiling: true,
+      });
+
+      // console.log("开始录音")
+      mediaRecorder.value.start();
+
+      // 每秒传输一次数据到接收端
+      timerId = setInterval(() => {
+        sendChunksToReceiver();
+        playAudio()
+      }, 1000);
+
+
+    };
+
+    const stopRecording = () => {
+      isRecording.value = false;
+      clearInterval(timerId);
+      mediaRecorder.value.stop();
+      sendChunksToReceiver(); // 最后一次传输数据
+      let msg = pb_msg.Msg.create({
+        sendID: state.user.uid,
+        recvID: "",
+        groupID: "",
+        senderPlatformID: 1,
+        senderNickname: state.user.nick_name,
+        senderFaceURL: state.user.face_url,
+        sessionType: 0,
+        msgFrom: 1,
+        contentType: 10,//发起语音聊天类型
+        content: "退出语音聊天",
+        seq: 0,
+        sendTime: Date.now(),
+        status: 0,
+      });
+      if (state.isGroup) {
+        msg.groupID = audio_recv_id
+        msg.sessionType = 1
+      } else {
+        msg.recvID = audio_recv_id
+        msg.sessionType = 0
+      }
+      websocket.value.send(pb_msg.Msg.encode(msg).finish());
+    };
+
+    const sendChunksToReceiver = () => {
+      // console.log("开始传输录音")
+      let blob = mediaRecorder.value.getWAVBlob()
+      mediaRecorder.value.stop()
+      mediaRecorder.value.start()
+      // console.log("blob:", blob)
+      // TODO: 将每秒的录音数据块通过网络传输或保存到数据库中
+      let msg = pb_msg.Msg.create({
+        sendID: state.user.uid,
+        recvID: "",
+        groupID: "",
+        senderPlatformID: 1,
+        senderNickname: "",
+        senderFaceURL: "",
+        sessionType: 0,
+        msgFrom: 1,
+        contentType: 9,//语音聊天类型
+        content: URL.createObjectURL(blob),
+        seq: 0,
+        sendTime: Date.now(),
+        status: 0,
+      });
+      if (state.isGroup) {
+        msg.groupID = audio_recv_id
+        msg.sessionType = 1
+      } else {
+        msg.recvID = audio_recv_id
+        msg.sessionType = 0
+      }
+
+      const fileReader = new FileReader();
+      fileReader.onload = () => {
+        const arrayBuffer = fileReader.result;
+        msg.file = new Uint8Array(arrayBuffer);
+      };
+
+      fileReader.onloadend = () => {
+        // console.log("开始发送语音消息:", msg)
+        // let ms =pb_msg.Msg.encode(msg).finish()
+        websocket.value.send(pb_msg.Msg.encode(msg).finish());
+        // console.log("实际发送解析:", pb_msg.Msg.decode(ms))
+        // console.log("发送消息成功:", msg)
+      };
+      fileReader.readAsArrayBuffer(blob);
+      //
+      // console.log("开始发送语音消息:", msg)
+      // let ms =pb_msg.Msg.encode(msg).finish()
+      // websocket.value.send(ms);
+      // console.log("实际发送解析:", pb_msg.Msg.decode(ms))
+      // // console.log("发送消息成功:", msg)
+
+    };
+    const playAudio = () => {
+      // console.log("开始播放录音,", audioDataList)
+      if (audioDataList.value.length <= 0) {
+        return
+      }
+      const audio = new Audio(audioDataList.value.pop());
+      audio.play();
+    };
+
     return {
-      blobToUint8Array,
       sendMessage,
       websocket,
+      startRecording,
+      stopRecording,
+      playAudio,
+      isRecording,
+      audioDataList
     };
   },
   methods: {
@@ -303,16 +478,16 @@ export default {
               async () => {
                 //发送文件
                 //如果文件大小超过15M，改为使用阿里云的oss保存
-                if (file.size <= 1024 * 1024 * 15)  {
+                if (file.size <= 1024 * 1024 * 15) {
                   // 创建FileReader对象
                   let reader = new FileReader();
                   // 定义读取文件时触发的回调函数
-                  reader.onload =  function (event) {
+                  reader.onload = function (event) {
                     // 获取读取的文件内容（以Blob的形式）
                     msg.file = new Uint8Array(event.target.result);
                     // 调用protobuf中的bytes类型进行传输
                   };
-                  reader.onloadend=()=>{
+                  reader.onloadend = () => {
                     console.log("开始发送文件:", msg)
                     console.log("发送文件二进制", pb_msg.Msg.encode(msg).finish())
                     this.websocket.send(pb_msg.Msg.encode(msg).finish());
