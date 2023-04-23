@@ -40,10 +40,10 @@
       </el-tab-pane>
     </el-tabs>
   </div>
-  <el-dialog v-model="is_userShow"  style="width: auto;max-width: 600px">
+  <el-dialog v-model="is_userShow" :key="userShowId" style="width: auto;max-width: 600px">
     <user_info :uid="userShowId"></user_info>
   </el-dialog>
-  <el-dialog v-model="is_groupShow"  style="width: auto;max-width: 800px">
+  <el-dialog v-model="is_groupShow" :key="groupShowId"  style="width: auto;max-width: 800px">
     <group_info :group_id="groupShowId"></group_info>
   </el-dialog>
 </template>

@@ -4,8 +4,8 @@
       <el-text style="max-width: 50%"  v-if="addReq.recv_id!=''">{{ addReq.send_nick_name }} 请求添加你为好友</el-text>
       <el-text style="max-width: 50%"  v-if="addReq.recv_id==''">{{ addReq.send_nick_name }} 请求加入 {{addReq.group_name}}</el-text>
       <div style="max-width: 150px;margin-inline-start: auto;margin-top: -30px;">
-      <el-button style="margin-right: 10px" type="success" size="small" @click="handleAddReq(addReq.object_id,true)">同意</el-button>
-      <el-button  type="danger" size="small" @click="handleAddReq(addReq.object_id,false)">拒绝</el-button>
+      <el-button style="margin-right: 10px" type="success" size="small" @click.stop="handleAddReq(addReq.object_id,true)">同意</el-button>
+      <el-button  type="danger" size="small" @click.stop="handleAddReq(addReq.object_id,false)">拒绝</el-button>
       </div>
     </el-menu-item>
 
@@ -21,6 +21,7 @@ import axios from "axios";
 import {ElMessage} from "element-plus";
 import User_info from "../info/user_info.vue";
 import {onMounted} from "vue";
+import {rootAddr} from "../../router/index.js";
 
 // 全局添加请求拦截器
 axios.interceptors.request.use(function (config) {
@@ -48,12 +49,35 @@ export default {
         add_req_id: id,
         is_agree: agree
       }).then(res => {
-        if (res.data.code == -1) {
+        if (res.data.code !=0) {
           ElMessage.error(`处理好友请求失败${res.data.msg}`)
           return
         }
-        ElMessage.success(`处理好友请求成功`)
-        console.log("处理好友请求成功", res)
+        let addReq=state.addReqList.get(id)
+        console.log("addReqList",state.addReqList)
+        console.log("addReq",addReq)
+        if (!addReq.recv_id||addReq.recv_id ==null|| addReq.recv_id == '') {
+          // 如果是群请求
+          if (agree) {
+            // 同意
+            ElMessage.success(`同意${addReq.send_nick_name}入群`)
+          }else {
+            // 拒绝
+            ElMessage.warning(`拒绝${addReq.send_nick_name}入群`)
+          }
+        } else {
+          // 如果是好友请求
+          if (agree) {
+            // 同意
+            if(!state.friendMap.has(addReq.send_id)){
+              state.friendList.push(addReq.send_id)
+            }
+            ElMessage.success(`同意${addReq.send_nick_name}为好友`)
+          }else {
+            // 拒绝
+            ElMessage.warning(`拒绝${addReq.send_nick_name}为好友`)
+          }
+        }
         // 删除已经处理的请求
         state.addReqList.delete(id)
       }).catch(

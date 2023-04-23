@@ -165,7 +165,10 @@ export default {
                   return
                 }
                 res.data.data.forEach(item => {
-                  state.addReqList.set(res.data.data.object_id, item)
+                  console.log("遍历群组申请列表返回：",item)
+                  if(item.object_id!=''){
+                    state.addReqList.set(item.object_id, item)
+                  }
                 })
               }
           ).catch(err => {

@@ -2,7 +2,7 @@
   <el-card header="文件">
     <div>
       <div style="display: flex; flex-wrap: nowrap;">
-      <img style="max-width: 300px;max-height: 200px" src="src/static/文件默认封面.gif" alt="文件" />
+      <img style="max-width: 300px;max-height: 200px" src="../../static/文件默认封面_2.gif" alt="文件" />
       </div>
       <div style="display: block; flex-wrap: nowrap;">
         <el-text><span>{{ formatFileSize(fileSize) }}</span></el-text>
