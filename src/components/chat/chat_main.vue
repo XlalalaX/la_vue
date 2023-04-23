@@ -124,6 +124,15 @@ export default {
               state.saveUsersFaceUrl.set(msg.sendID, msg.senderFaceURL)
             }
           }
+          let chatId=msg.groupID
+          //单聊
+          if (msg.sessionType == 0) {
+            chatId = getChatId(msg.sendID, msg.recvID)
+          }
+          if (!state.Record.has(chatId)) {
+            state.Record.set(chatId, [])
+          }
+          let index=state.Record.get(chatId).length
 
           // console.log("开始获取文件url")
           switch (msg.contentType) {
@@ -137,7 +146,7 @@ export default {
             case 9:
               //只有在设置为录音状态时才接收语音消息
               if (isRecording) {
-                if(msg.sendID==state.user.uid){
+                if (msg.sendID == state.user.uid) {
                   return
                 }
                 // console.log("接收到语音消息,", msg)
@@ -160,25 +169,8 @@ export default {
           }
           console.log("结束获取文件url")
           console.log("msg:", msg)
-          //单聊
-          if (msg.sessionType == 0) {
-            let chatId = getChatId(msg.sendID, msg.recvID)
-            if (!state.Record.has(chatId)) {
-              state.Record.set(chatId, [])
-            }
-
-              state.Record.get(chatId).push(msg)
-
-          } else {
-            //群聊
-            if (!state.Record.has(msg.groupID)) {
-              state.Record.set(msg.groupID, [])
-            }
-
-
-              state.Record.get(msg.groupID).push(msg)
-
-          }
+          console.log("state.Record.get(chatId):", state.Record.get(chatId))
+          state.Record.get(chatId).splice(index, 0, msg)
         };
       }).catch(err => {
         alert(`链接出错：${err}`)
@@ -249,9 +241,9 @@ export default {
     const startRecording = () => {
       isRecording.value = true;
 
-      if (state.isGroup){
+      if (state.isGroup) {
         audio_recv_id = state.ShowGroupId
-      }else {
+      } else {
         audio_recv_id = state.ShowFriendId
       }
 
