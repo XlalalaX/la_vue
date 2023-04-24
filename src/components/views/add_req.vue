@@ -70,7 +70,24 @@ export default {
           if (agree) {
             // 同意
             if(!state.friendMap.has(addReq.send_id)){
-              state.friendList.push(addReq.send_id)
+
+              axios.get(`http://${rootAddr}/user/user_show_info?uid=${state.friendList[i]}`).then(
+                  async res=>{
+                    if(res.data.code!=0){
+                      ElMessage.error(`获取好友详情失败${res.data.msg}`)
+                      return
+                    }
+                    let respond=await axios.get(`http://${rootAddr}/user_not/user_face_url?uid=${res.data.data.uid}`)
+                    res.data.data.face_url=respond.data.data
+                    state.friendMap.set(state.friendList[i],res.data.data)
+                    state.saveUsersFaceUrl.set(state.friendList[i],respond.data.data)
+                    state.friendList.push(addReq.send_id)
+                  }
+              ).catch(
+                  err => {
+                    ElMessage.error(`获取好友详情失败${err}`)
+                  }
+              )// 获取好友信息
             }
             ElMessage.success(`同意${addReq.send_nick_name}为好友`)
           }else {

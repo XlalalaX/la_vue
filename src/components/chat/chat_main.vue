@@ -1,11 +1,11 @@
 <template>
-  <div class="chat_main" style="height: 100vh;width: 100vh; display: flex; flex-direction: column;">
+  <div class="chat_main" style="height: 100vh;width: 100vw; display: flex; flex-direction: column;">
     <el-container style="display: flex">
-      <el-header style="width: 100%; height: 5%; display: table">
+      <el-header style="width: 100%; height: 60px; display: table">
         <chat-header/>
       </el-header>
-      <el-container style="width: 100%; height: 80%; ">
-        <el-aside style="width:auto; resize: horizontal; overflow: auto; cursor: ew-resize;">
+      <el-container style="width: 100%; height: calc(100vh - 160px); ">
+        <el-aside style="width:auto; resize: horizontal; overflow: hidden; cursor: ew-resize;">
           <div>
             <div v-if="state.isGroup">
               <chat_group_list/>
@@ -14,30 +14,30 @@
               <chat_friend_list/>
             </div>
           </div>
-          <div v-if="state.addReqList.size!=0">
+          <div v-if="state.addReqList.size!=0" style="height: 60px">
             <el-button @click="showAddReq=true">添加请求</el-button>
           </div>
         </el-aside>
         <el-container style="width: 80%;">
-          <el-main style="">
+          <el-main style="overflow-y: hidden">
             <chat_content @startAudioChat="startRecording"/>
           </el-main>
-          <el-footer style="height: 10%;" v-if="state.isGroup?state.groupList.length>0:state.friendList.length>0">
-            <div>
-              <!-- 录音的按钮 -->
-              <el-button type="primary" size="small" @click="startRecording" v-if="!isRecording">
-                发起语音通话
-              </el-button>
-              <el-button type="danger" size="small" @click="stopRecording" v-if="isRecording">
-                结束语音通话
-              </el-button>
-            </div>
-            <el-input @paste="handlePaste" v-model="state.inputMsg" placeholder="请输入消息"
-                      style="width: 80%;"></el-input>
-            <el-button type="primary" @click="sendMessage" style="width: 20%;">发送</el-button>
-          </el-footer>
         </el-container>
       </el-container>
+      <el-footer style="height: 60px;" v-if="state.isGroup?state.groupList.length>0:state.friendList.length>0">
+        <div>
+          <!-- 录音的按钮 -->
+          <el-button type="primary" size="small" @click="startRecording" v-if="!isRecording">
+            发起语音通话
+          </el-button>
+          <el-button type="danger" size="small" @click="stopRecording" v-if="isRecording">
+            结束语音通话
+          </el-button>
+        </div>
+        <el-input @paste="handlePaste" v-model="state.inputMsg" placeholder="请输入消息"
+                  style="width: 80%;"></el-input>
+        <el-button type="primary" @click="sendMessage" style="width: 20%;">发送</el-button>
+      </el-footer>
       <div> <!-- 新增加的 div 标签 -->
         <el-dialog v-model="showAddReq">
           <add_req/>
@@ -146,6 +146,7 @@ export default {
             case 9:
               //只有在设置为录音状态时才接收语音消息
               if (isRecording) {
+                // //如果是自己发送的消息则忽视
                 if (msg.sendID == state.user.uid) {
                   return
                 }
@@ -229,13 +230,13 @@ export default {
 
     const isRecording = ref(false); // 是否正在录制
     const audioDataList = ref([]); // 录制后生成的音频数据
-    const mediaRecorder = ref(new Recorder({
+    let mediaRecorder = new Recorder({
       type: 'mp3',
       sampleRate: 16000,
       bitRate: 16,
       numChannels: 1,
       compiling: true,
-    }));
+    });
     let timerId; // 定时器 ID
     let audio_recv_id = state.user.uid; // 接收者 ID
     const startRecording = () => {
@@ -271,7 +272,7 @@ export default {
       }
       websocket.value.send(pb_msg.Msg.encode(msg).finish());
 
-      mediaRecorder.value = new Recorder({
+      mediaRecorder = new Recorder({
         type: 'mp3',
         sampleRate: 16000,
         bitRate: 16,
@@ -280,7 +281,7 @@ export default {
       });
 
       // console.log("开始录音")
-      mediaRecorder.value.start();
+      mediaRecorder.start();
 
       // 每秒传输一次数据到接收端
       timerId = setInterval(() => {
@@ -294,7 +295,7 @@ export default {
     const stopRecording = () => {
       isRecording.value = false;
       clearInterval(timerId);
-      mediaRecorder.value.stop();
+      mediaRecorder.stop();
       sendChunksToReceiver(); // 最后一次传输数据
       let msg = pb_msg.Msg.create({
         sendID: state.user.uid,
@@ -322,10 +323,10 @@ export default {
     };
 
     const sendChunksToReceiver = () => {
-      // console.log("开始传输录音")
-      let blob = mediaRecorder.value.getWAVBlob()
-      mediaRecorder.value.stop()
-      mediaRecorder.value.start()
+      console.log("开始传输录音")
+      let blob = mediaRecorder.getWAVBlob()
+      // let blob = mediaRecorder.value.getNextData()
+      mediaRecorder.start()
       // console.log("blob:", blob)
       // TODO: 将每秒的录音数据块通过网络传输或保存到数据库中
       let msg = pb_msg.Msg.create({
@@ -358,10 +359,10 @@ export default {
       };
 
       fileReader.onloadend = () => {
-        // console.log("开始发送语音消息:", msg)
-        // let ms =pb_msg.Msg.encode(msg).finish()
-        websocket.value.send(pb_msg.Msg.encode(msg).finish());
-        // console.log("实际发送解析:", pb_msg.Msg.decode(ms))
+        console.log("开始发送语音消息:", msg)
+        let ms =pb_msg.Msg.encode(msg).finish()
+        websocket.value.send(ms);
+        console.log("实际发送解析:", pb_msg.Msg.decode(ms))
         // console.log("发送消息成功:", msg)
       };
       fileReader.readAsArrayBuffer(blob);
@@ -385,6 +386,7 @@ export default {
     return {
       sendMessage,
       websocket,
+      mediaRecorder,
       startRecording,
       stopRecording,
       playAudio,

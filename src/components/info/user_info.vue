@@ -54,6 +54,14 @@ export default {
           ElMessage.error(`删除好友失败${res.data.msg}`)
           return
         }
+        let list=[]
+        for(let i=0;i<state.friendList.length;i++){
+          if(state.friendList[i].uid!=this.uid){
+            list.push(state.friendList[i])
+          }
+        }
+        state.friendList = list
+        state.friendMap.delete(this.uid)
         ElMessage.success(`删除好友成功`)
         console.log("删除好友成功",res)
         this.isFriend = false
