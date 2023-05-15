@@ -2,6 +2,9 @@
 # Vue 3 + Vite + grpc
 
 ## lalala_im的简陋前端
+### 后端：
+https://github.com/XlalalaX/lalala_im
+
 ### 通讯功能（普通聊天消息、文件和语音聊天）：
 
 ![img_13.png](img_13.png)
