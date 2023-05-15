@@ -1,7 +1,35 @@
-# Vue 3 + Vite
+# la_vue
+# Vue 3 + Vite + grpc
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+## lalala_im的简陋前端
+### 通讯功能（普通聊天消息、文件和语音聊天）：
 
-## Recommended IDE Setup
+![img_13.png](img_13.png)
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+(视频聊天前端不会搞就没做)
+
+### 其他功能：
+
+![img_1.png](img_1.png)
+
+![img_2.png](img_2.png)
+
+![img_3.png](img_3.png)
+
+![img_4.png](img_4.png)
+
+![img_5.png](img_5.png)
+
+![img_6.png](img_6.png)
+
+![img_7.png](img_7.png)
+
+![img_8.png](img_8.png)
+
+![img_9.png](img_9.png)
+
+![img_10.png](img_10.png)
+
+![img_11.png](img_11.png)
+
+![img_12.png](img_12.png)
